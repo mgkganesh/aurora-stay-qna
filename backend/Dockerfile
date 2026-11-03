@@ -2,7 +2,7 @@
 FROM python:3.13.15-slim
 
 WORKDIR /app
-COPY . .
+COPY . . 
 
 RUN pip install --no-cache-dir --upgrade pip
 
@@ -27,4 +27,5 @@ HuggingFaceEmbeddings( \
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_HUB_OFFLINE=1
 
-CMD ["gunicorn", "-w", "1", "--timeout", "120", "-b", "0.0.0.0:7860", "app:rag_api"]
+# Run using Uvicorn ASGI server on port 7860
+CMD ["uvicorn", "app:rag_api", "--host", "0.0.0.0", "--port", "7860"]
