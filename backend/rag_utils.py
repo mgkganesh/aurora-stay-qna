@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 import os
 
 # Retrieve the top-k relevant chunks from the vector store
-def retrieve(query: str, k: int = 2,vectorstore=None) -> list[str]:
+def retrieve(query: str, k: int = 5,vectorstore=None) -> list[str]:
     results = vectorstore.similarity_search(query, k=k)
 
     # Return each chunk with its content and metadata
@@ -13,30 +13,34 @@ def retrieve(query: str, k: int = 2,vectorstore=None) -> list[str]:
     ]
 
 # Define the generation function that prompts the LLM with retrieved context
-def generate(query, retrieved_chunks,model) -> str:
+def generate(query, retrieved_chunks, model) -> str:
+
+    # Join the chunks into one readable block (instead of passing a Python list)
+    context = "\n\n---\n\n".join(retrieved_chunks)
 
     prompt = f"""
-    You are an AI assistant answering questions about medical insurance policies.
+    You are an internal assistant for AuroraStay Hotels front-desk and reservations staff.
+    Answer the staff member's question using only the retrieved AuroraStay policy information below.
 
-    User Query:
+    Staff Question:
     {query}
 
     Retrieved Policy Information:
-    {retrieved_chunks}
+    {context}
 
     Rules:
-    1. Use only information explicitly supported by the retrieved policy information.
-    2. Do not use outside knowledge, assumptions, or information not present in the retrieved policy information.
-    3. Include all relevant information needed to answer the query completely.
-    4. Do not omit important conditions, exclusions, limitations, exceptions, or coverage details.
-    5. Focus only on information directly relevant to the user's query.
-    6. Do not include unrelated information from the retrieved policy information.
-    7. Answer the user's specific question directly and ensure the response addresses what was asked.
-    8. Keep the answer concise, clear, and easy to understand.
-    9. Do not invent benefits, exclusions, limits, waiting periods, conditions, or coverage details.
-    10. If the information is insufficient, say:
-        "The available policy documents do not contain enough information to answer this question."
-        If the retrieved information conflicts, clearly mention the conflict.
+    1. Use only facts stated in the retrieved policy information. Do not use outside knowledge or assumptions.
+    2. Answer every part of the question. If it asks about several things (for example a fee and a refund rule, or two properties), address each one.
+    3. When a property is named (by code such as ASH-CHI or by city or name such as "Chicago" or "Miami Brickell"), use only that property's row. Never apply one property's fee, time, or rule to another property.
+    4. Quote amounts, times, limits, and deadlines exactly as written (for example "$50 per night, $150 stay cap" or "6:00 PM local property time one day before arrival").
+    5. Include conditions and exceptions that change the answer (for example "unless the confirmation states a different rule", or that service animals are not charged a pet fee).
+    6. Start with the direct answer in the first sentence, then add only the supporting details needed. Do not add unrelated policy text.
+    7. Keep the answer concise: 2 to 5 sentences or a short bullet list.
+    8. Do not invent fees, deadlines, amenities, exceptions, or approvals.
+    9. If only part of the question is covered, answer the covered part and clearly state which part is not covered, so staff can check the live property profile or contact the property team.
+       Only if nothing relevant is retrieved, reply exactly:
+       "The available policy documents do not contain enough information to answer this question."
+    10. If the retrieved information conflicts, clearly mention the conflict.
 
     Answer:
     """
@@ -46,7 +50,7 @@ def generate(query, retrieved_chunks,model) -> str:
 # Define the full RAG pipeline combining retrieval and generation
 def rag(
     query: str,
-    k: int = 2,
+    k: int = 5,
     model_name: str = "gpt-4o-mini",
     temperature: float = 0.0,
     top_p: float = 1.0,
